@@ -425,7 +425,7 @@
             <button onclick="window.location.reload()">Reset Board</button>
         </div>
         <div class="instruction-tips">
-            <b>Double-click</b> Sc–Hg (and La) to see Oxidation States | <b>Right-click</b> drag to toggle
+            <b>Double-click</b> Sc–Hg (and La) to see Oxidation States | <b>Right-click</b> drag to toggle | <b>Arrows</b> to navigate
         </div>
     </div>
 
@@ -494,7 +494,8 @@
 
         let correctCount = 0, totalAttempts = 0, seconds = 0, studyMode = false;
         let showingExceptions = false, showingPlatinum = false;
-        const exceptions = ["Cr", "Cu", "Nb", "Mo", "Ru", "Rh", "Pd", "Ag", "Pt", "Au"];
+        // User updated list: Removed Cu, Added Co
+        const exceptions = ["Cr", "Nb", "Mo", "Co", "Ru", "Rh", "Pd", "Ag", "Pt", "Au"];
         const platinumGroup = ["Ru", "Rh", "Pd", "Os", "Ir", "Pt"];
 
         let isRightClickDragging = false, dragAction = null; 
@@ -598,6 +599,21 @@
             correctCount++;
             document.getElementById('score').textContent = `${correctCount} / 118`;
             if (isManualReveal) totalAttempts += 2;
+
+            // FIX: Auto-advance logic - Find next non-completed element by atomic number
+            let nextN = element.n + 1;
+            let nextInput = document.querySelector(`input[data-n="${nextN}"]`);
+            
+            // If the next one is already done (disabled), keep skipping until we find an active one
+            // or until we run out of elements.
+            while (nextInput && nextInput.disabled && nextN <= 118) {
+                 nextN++;
+                 nextInput = document.querySelector(`input[data-n="${nextN}"]`);
+            }
+            
+            if (nextInput) {
+                nextInput.focus();
+            }
         }
 
         function unMarkCorrect(cell, input) {
@@ -618,6 +634,32 @@
             cell.innerHTML = `<div class="number">${element.n}</div><input type="text" maxlength="2" spellcheck="false" autocomplete="off" data-n="${element.n}" data-r="${element.r}" data-c="${element.c}">`;
             
             const input = cell.querySelector('input');
+            
+            // FIX: Arrow Key Navigation
+            input.addEventListener('keydown', (e) => {
+                // Only process arrow keys
+                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+
+                const r = parseInt(input.dataset.r);
+                const c = parseInt(input.dataset.c);
+                let targetInput;
+
+                if (e.key === 'ArrowUp') {
+                    targetInput = document.querySelector(`input[data-r="${r - 1}"][data-c="${c}"]`);
+                } else if (e.key === 'ArrowDown') {
+                    targetInput = document.querySelector(`input[data-r="${r + 1}"][data-c="${c}"]`);
+                } else if (e.key === 'ArrowLeft') {
+                    targetInput = document.querySelector(`input[data-r="${r}"][data-c="${c - 1}"]`);
+                } else if (e.key === 'ArrowRight') {
+                    targetInput = document.querySelector(`input[data-r="${r}"][data-c="${c + 1}"]`);
+                }
+
+                if (targetInput) {
+                    e.preventDefault(); // Prevent page scrolling
+                    targetInput.focus();
+                }
+            });
+
             cell.addEventListener('mousedown', (e) => {
                 if (e.button === 0 && !cell.classList.contains('correct')) input.focus();
                 else if (e.button === 2) {
