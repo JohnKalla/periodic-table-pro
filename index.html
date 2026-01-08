@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master the Periodic Table</title>
+    <style>
+        /* Theme Variables */
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --primary: #3b82f6;
+            --success: #22c55e;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --input-bg: #ffffff;
+            --cell-size: 50px;
+            --exception-color: #f59e0b;
+            --platinum-group-color: #ec4899;
+            --modal-overlay: transparent;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #38bdf8;
+            --success: #10b981;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --input-bg: #0f172a;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            user-select: none;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            background: var(--card-bg);
+            padding: 10px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .table-container {
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            overflow-x: auto;
+            max-width: 98vw;
+            border: 1px solid var(--border);
+        }
+
+        .periodic-grid {
+            display: grid;
+            grid-template-columns: repeat(18, var(--cell-size));
+            grid-template-rows: repeat(10, calc(var(--cell-size) * 1.2));
+            gap: 4px;
+        }
+
+        .cell {
+            position: relative;
+            width: var(--cell-size);
+            height: calc(var(--cell-size) * 1.2);
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 6px;
+            box-sizing: border-box;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+            cursor: pointer;
+        }
+
+        .cell.highlight-exception::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 42px;
+            height: 42px;
+            border: 4px solid var(--exception-color);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .cell.highlight-platinum-group::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border: 4px solid var(--platinum-group-color);
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 6;
+        }
+
+        .cell .number {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 10px;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .cell input {
+            width: 85%;
+            border: none;
+            border-bottom: 1.5px solid var(--border);
+            text-align: center;
+            font-size: 16px;
+            font-weight: 800;
+            text-transform: capitalize;
+            outline: none;
+            background: transparent;
+            color: var(--text-main);
+        }
+
+        .cell:hover {
+            border-color: var(--primary);
+            z-index: 10;
+            transform: scale(1.08);
+            background: var(--card-bg);
+        }
+
+        .cell.correct {
+            background-color: var(--success) !important;
+            border-color: #059669;
+        }
+
+        .cell.correct .number, .cell.correct input {
+            color: #ffffff !important;
+            border-bottom-color: transparent;
+        }
+
+        .cell.empty {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Oxidation Pop-up Styles */
+        #oxidation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--modal-overlay);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            pointer-events: auto; /* ENABLED so background click works */
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 8px;
+            border: 2px solid var(--primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 260px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            /* No need for extra pointer-events auto here, it inherits */
+        }
+
+        .modal-title {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: var(--text-main);
+            font-weight: 800;
+        }
+
+        .ox-states-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .ox-state {
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: var(--border);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-main);
+        }
+
+        .ox-state.highlighted {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .controls {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button.secondary {
+            background: var(--border);
+            color: var(--text-main);
+        }
+
+        .instruction-tips {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="oxidation-modal">
+        <div class="modal-content">
+            <h3 class="modal-title" id="modal-element-name">Element</h3>
+            <div class="ox-states-container" id="modal-ox-states"></div>
+            <button class="secondary" style="margin-top: 15px; width: 100%; padding: 6px;" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <header>
+        <h1>Periodic Table Pro Challenge</h1>
+        <button class="theme-toggle" id="theme-btn" title="Toggle Theme">
+            <svg id="sun-icon" style="display:none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <svg id="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+        <div class="hint-text" id="hint-display" style="font-weight: 600; min-height: 1.5em; color: var(--text-muted);">Fill the table by typing the symbols</div>
+    </header>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span class="stat-label">Progress</span>
+            <span class="stat-value" id="score">0 / 118</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Time</span>
+            <span class="stat-value" id="timer">00:00</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Accuracy</span>
+            <span class="stat-value" id="accuracy">100%</span>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="periodic-grid" id="grid"></div>
+    </div>
+
+    <div class="controls">
+        <div class="btn-group">
+            <button class="secondary" id="toggle-exceptions">E- Config Exceptions</button>
+            <button class="secondary" id="toggle-platinum">Platinum Group</button>
+            <button class="secondary" id="toggle-hints">Study Mode: Hints Off</button>
+            <button onclick="window.location.reload()">Reset Board</button>
+        </div>
+        <div class="instruction-tips">
+            <b>Double-click</b> Sc–Zn to see Oxidation States | <b>Right-click</b> drag to toggle
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STRUCTURES ---
+        // ox: all states sorted
+        // cOx: states that should be highlighted (Blue)
+        // bOx: states that should be in [Brackets]
+        
+        // Exact request:
+        // Sc: h3
+        // Ti: 0, 2, 3, h4
+        // V: 0, 1, 2, h3, h4, h5
+        // Cr: 0, 1, h2, h3, 4, 5, h6
+        // Mn: 0, 1, h2, 3, 4, 5, 6, 7
+        // Fe: 0, 1, h2, h3, 4, 6
+        // Co: 0, 1, h2, h3, 4
+        // Ni: 0, 1, h2, 3, 4
+        // Cu: [0], h1, h2, 3, [4]
+        // Zn: [1], h2
+
+        const targetElements = [
+            {n:21, s:"Sc", name:"Scandium", r:4, c:3, ox:[3], cOx:[3], bOx:[]},
+            {n:22, s:"Ti", name:"Titanium", r:4, c:4, ox:[0, 2, 3, 4], cOx:[4], bOx:[]},
+            {n:23, s:"V", name:"Vanadium", r:4, c:5, ox:[0, 1, 2, 3, 4, 5], cOx:[3, 4, 5], bOx:[]},
+            {n:24, s:"Cr", name:"Chromium", r:4, c:6, ox:[0, 1, 2, 3, 4, 5, 6], cOx:[2, 3, 6], bOx:[]},
+            {n:25, s:"Mn", name:"Manganese", r:4, c:7, ox:[0, 1, 2, 3, 4, 5, 6, 7], cOx:[2], bOx:[]},
+            {n:26, s:"Fe", name:"Iron", r:4, c:8, ox:[0, 1, 2, 3, 4, 6], cOx:[2, 3], bOx:[]},
+            {n:27, s:"Co", name:"Cobalt", r:4, c:9, ox:[0, 1, 2, 3, 4], cOx:[2, 3], bOx:[]},
+            {n:28, s:"Ni", name:"Nickel", r:4, c:10, ox:[0, 1, 2, 3, 4], cOx:[2], bOx:[]},
+            {n:29, s:"Cu", name:"Copper", r:4, c:11, ox:[0, 1, 2, 3, 4], cOx:[1, 2], bOx:[0, 4]},
+            {n:30, s:"Zn", name:"Zinc", r:4, c:12, ox:[1, 2], cOx:[2], bOx:[1]}
+        ];
+
+        // Fill in missing elements with standard data structure but NO oxidation data
+        const symbolList = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca","Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn","Ga","Ge","As","Se","Br","Kr","Rb","Sr","Y","Zr","Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd","In","Sn","Sb","Te","I","Xe","Cs","Ba","La","Ce","Pr","Nd","Pm","Sm","Eu","Gd","Tb","Dy","Ho","Er","Tm","Yb","Lu","Hf","Ta","W","Re","Os","Ir","Pt","Au","Hg","Tl","Pb","Bi","Po","At","Rn","Fr","Ra","Ac","Th","Pa","U","Np","Pu","Am","Cm","Bk","Cf","Es","Fm","Md","No","Lr","Rf","Db","Sg","Bh","Hs","Mt","Ds","Rg","Cn","Nh","Fl","Mc","Lv","Ts","Og"];
+        const gridPos = [[1,1],[1,18],[2,1],[2,2],[2,13],[2,14],[2,15],[2,16],[2,17],[2,18],[3,1],[3,2],[3,13],[3,14],[3,15],[3,16],[3,17],[3,18],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11],[4,12],[4,13],[4,14],[4,15],[4,16],[4,17],[4,18],[5,1],[5,2],[5,3],[5,4],[5,5],[5,6],[5,7],[5,8],[5,9],[5,10],[5,11],[5,12],[5,13],[5,14],[5,15],[5,16],[5,17],[5,18],[6,1],[6,2],[9,4],[9,5],[9,6],[9,7],[9,8],[9,9],[9,10],[9,11],[9,12],[9,13],[9,14],[9,15],[9,16],[9,17],[9,18],[6,4],[6,5],[6,6],[6,7],[6,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[6,15],[6,16],[6,17],[6,18],[7,1],[7,2],[10,4],[10,5],[10,6],[10,7],[10,8],[10,9],[10,10],[10,11],[10,12],[10,13],[10,14],[10,15],[10,16],[10,17],[10,18],[7,4],[7,5],[7,6],[7,7],[7,8],[7,9],[7,10],[7,11],[7,12],[7,13],[7,14],[7,15],[7,16],[7,17],[7,18]];
+
+        const fullElements = symbolList.map((s, i) => {
+            const existing = targetElements.find(e => e.s === s);
+            if (existing) return existing;
+            return {
+                n: i + 1, s, name: s, r: gridPos[i][0], c: gridPos[i][1],
+                // Empty arrays mean no popup
+                ox: [], cOx: [], bOx: []
+            };
+        });
+
+        // --- GLOBAL VARIABLES ---
+        let correctCount = 0;
+        let totalAttempts = 0;
+        let seconds = 0;
+        let studyMode = false;
+        let showingExceptions = false;
+        let showingPlatinum = false;
+        
+        const exceptions = ["Cr", "Cu", "Nb", "Mo", "Ru", "Rh", "Pd", "Ag", "Pt", "Au"];
+        const platinumGroup = ["Ru", "Rh", "Pd", "Os", "Ir", "Pt"];
+
+        // Drag State
+        let isRightClickDragging = false;
+        let dragAction = null; 
+
+        // --- CORE FUNCTIONS ---
+        const modal = document.getElementById('oxidation-modal');
+        const modalTitle = document.getElementById('modal-element-name');
+        const modalOxContainer = document.getElementById('modal-ox-states');
+
+        function openOxidationModal(element) {
+            modalTitle.textContent = `${element.name} (${element.s})`;
+            modalOxContainer.innerHTML = '';
+            
+            element.ox.forEach(state => {
+                const badge = document.createElement('div');
+                badge.className = 'ox-state';
+                
+                // 1. Highlight Logic (Blue)
+                if (element.cOx.includes(state)) {
+                    badge.classList.add('highlighted');
+                }
+                
+                // 2. Bracket Logic
+                let text = state > 0 ? `+${state}` : state;
+                if (element.bOx.includes(state)) {
+                    text = `[${text}]`;
+                }
+                
+                badge.textContent = text;
+                modalOxContainer.appendChild(badge);
+            });
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        // Close modal on outside click (Checking if clicked directly on the overlay)
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        function markCorrect(cell, input, element, isManualReveal = false) {
+            if (cell.classList.contains('correct')) return;
+            cell.classList.add('correct');
+            input.value = element.s;
+            input.disabled = true;
+            correctCount++;
+            document.getElementById('score').textContent = `${correctCount} / 118`;
+            if (isManualReveal) totalAttempts += 2;
+        }
+
+        function unMarkCorrect(cell, input) {
+            if (!cell.classList.contains('correct')) return;
+            cell.classList.remove('correct');
+            input.value = "";
+            input.disabled = false;
+            correctCount--;
+            document.getElementById('score').textContent = `${correctCount} / 118`;
+        }
+
+        function applyActionToCell(cell, input, element) {
+            if (dragAction === 'reveal') {
+                markCorrect(cell, input, element, true);
+            } else if (dragAction === 'hide') {
+                unMarkCorrect(cell, input);
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        // Timer
+        setInterval(() => {
+            seconds++;
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            document.getElementById('timer').textContent = `${m}:${s}`;
+        }, 1000);
+
+        // Prevent context menu globally on the entire document to fix the right-click issue
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        
+        // Global Drag Reset
+        const stopDrag = () => {
+            isRightClickDragging = false;
+            dragAction = null;
+        };
+        window.addEventListener('mouseup', stopDrag);
+        window.addEventListener('blur', stopDrag);
+
+        // --- GRID GENERATION ---
+        const grid = document.getElementById('grid');
+
+        // Navigation Helper
+        function navigate(currentRow, currentCol, dr, dc) {
+            let nextR = currentRow + dr;
+            let nextC = currentCol + dc;
+            while (nextR >= 1 && nextR <= 10 && nextC >= 1 && nextC <= 18) {
+                const target = fullElements.find(e => e.r === nextR && e.c === nextC);
+                if (target) {
+                    const input = document.querySelector(`.cell input[data-r="${nextR}"][data-c="${nextC}"]`);
+                    if (input && !input.disabled) {
+                        input.focus();
+                        return;
+                    }
+                }
+                nextR += dr;
+                nextC += dc;
+                if (dc !== 0 && (nextC < 1 || nextC > 18)) break;
+                if (dr !== 0 && (nextR < 1 || nextR > 10)) break;
+            }
+        }
+
+        for (let r = 1; r <= 10; r++) {
+            for (let c = 1; c <= 18; c++) {
+                const element = fullElements.find(e => e.r === r && e.c === c);
+                const cell = document.createElement('div');
+                
+                if (element) {
+                    cell.className = 'cell';
+                    cell.dataset.symbol = element.s;
+                    cell.innerHTML = `
+                        <div class="number">${element.n}</div>
+                        <input type="text" maxlength="2" spellcheck="false" autocomplete="off" 
+                               data-n="${element.n}" data-r="${r}" data-c="${c}">
+                    `;
+                    
+                    const input = cell.querySelector('input');
+                    
+                    // --- MOUSE & DRAG LOGIC ---
+                    cell.addEventListener('mousedown', (e) => {
+                        if (e.button === 0) { // Left Click
+                            if (!cell.classList.contains('correct')) input.focus();
+                        } else if (e.button === 2) { // Right Click
+                            isRightClickDragging = true;
+                            dragAction = cell.classList.contains('correct') ? 'hide' : 'reveal';
+                            applyActionToCell(cell, input, element);
+                        }
+                    });
+
+                    cell.addEventListener('mouseenter', (e) => {
+                        // Hint Display
+                        const hintDisplay = document.getElementById('hint-display');
+                        if (cell.classList.contains('correct')) {
+                            hintDisplay.textContent = `Atomic Number ${element.n}: ${element.name}`;
+                        } else {
+                            hintDisplay.textContent = "Fill the table by typing the symbols";
+                        }
+
+                        // Drag Paint Logic
+                        if ((e.buttons & 2) === 2 && isRightClickDragging && dragAction) {
+                            applyActionToCell(cell, input, element);
+                        }
+                    });
+
+                    // --- KEYBOARD NAVIGATION ---
+                    input.addEventListener('keydown', (e) => {
+                        const row = parseInt(input.dataset.r);
+                        const col = parseInt(input.dataset.c);
+                        switch(e.key) {
+                            case 'ArrowUp': e.preventDefault(); navigate(row, col, -1, 0); break;
+                            case 'ArrowDown': e.preventDefault(); navigate(row, col, 1, 0); break;
+                            case 'ArrowLeft': e.preventDefault(); navigate(row, col, 0, -1); break;
+                            case 'ArrowRight': e.preventDefault(); navigate(row, col, 0, 1); break;
+                        }
+                    });
+
+                    // --- OXIDATION POPUP (Conditional) ---
+                    cell.addEventListener('dblclick', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Only open if we have data for this element
+                        if (element.ox.length > 0) {
+                            openOxidationModal(element);
+                        }
+                    });
+
+                    // --- INPUT LOGIC ---
+                    input.addEventListener('input', (e) => {
+                        const val = e.target.value.trim().toLowerCase();
+                        if (val.length === 0) return;
+                        totalAttempts++;
+                        if (val === element.s.toLowerCase()) {
+                            markCorrect(cell, input, element, false);
+                            const nextElement = fullElements.find(el => el.n === element.n + 1);
+                            if (nextElement) {
+                                const nextInput = document.querySelector(`.cell input[data-n="${nextElement.n}"]`);
+                                if (nextInput && !nextInput.disabled) nextInput.focus();
+                            }
+                        } else {
+                            document.getElementById('accuracy').textContent = Math.round((correctCount / totalAttempts) * 100) + "%";
+                        }
+                    });
+                } else {
+                    cell.className = 'cell empty';
+                }
+                grid.appendChild(cell);
+            }
+        }
+
+        // --- BUTTON TOGGLES ---
+        const toggleExceptionsBtn = document.getElementById('toggle-exceptions');
+        const togglePlatinumBtn = document.getElementById('toggle-platinum');
+
+        toggleExceptionsBtn.addEventListener('click', () => {
+            showingExceptions = !showingExceptions;
+            toggleExceptionsBtn.classList.toggle('active-exception', showingExceptions);
+            document.querySelectorAll('.cell').forEach(cell => {
+                if (exceptions.includes(cell.dataset.symbol)) {
+                    cell.classList.toggle('highlight-exception', showingExceptions);
+                }
+            });
+        });
+
+        togglePlatinumBtn.addEventListener('click', () => {
+            showingPlatinum = !showingPlatinum;
+            togglePlatinumBtn.classList.toggle('active-platinum', showingPlatinum);
+            document.querySelectorAll('.cell').forEach(cell => {
+                if (platinumGroup.includes(cell.dataset.symbol)) {
+                    cell.classList.toggle('highlight-platinum-group', showingPlatinum);
+                }
+            });
+        });
+
+        document.getElementById('toggle-hints').addEventListener('click', (e) => {
+            studyMode = !studyMode;
+            e.target.textContent = studyMode ? "Study Mode: Hints On" : "Study Mode: Hints Off";
+            const inputs = document.querySelectorAll('.cell input');
+            inputs.forEach((input) => {
+                const n = parseInt(input.dataset.n);
+                const el = fullElements.find(item => item.n === n);
+                if (!input.disabled) {
+                    input.placeholder = studyMode ? el.name.substring(0, 2) + ".." : "";
+                }
+            });
+        });
+
+        // Theme Init Logic
+        const themeBtn = document.getElementById('theme-btn');
+        const sunIcon = document.getElementById('sun-icon');
+        const moonIcon = document.getElementById('moon-icon');
+        
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            if (theme === 'dark') {
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            } else {
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+        }
+
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        setTheme(savedTheme);
+
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        });
+    </script>
+</body>
+</html>
